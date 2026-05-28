@@ -14,7 +14,10 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
       - ./backend/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/schema.sql
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --character-set-client-handshake=FALSE
 
   redis:
     image: redis:7-alpine
