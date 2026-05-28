@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.ordering.controller.OrderControllerTest$OrderActionEndpoint
+-------------------------------------------------------------------------------
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.039 s -- in com.ordering.controller.OrderControllerTest$OrderActionEndpoint

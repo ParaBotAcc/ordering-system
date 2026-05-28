@@ -1,0 +1,35 @@
+{
+  "pages": [
+    {"path": "pages/index/index", "style": {"navigationBarTitleText": "点餐", "enablePullDownRefresh": false}},
+    {"path": "pages/search/index", "style": {"navigationBarTitleText": "搜索菜品"}},
+    {"path": "pages/order/index", "style": {"navigationBarTitleText": "我的订单"}},
+    {"path": "pages/order-detail/index", "style": {"navigationBarTitleText": "订单详情"}}
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F5F5F5",
+    "navigationStyle": "custom"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#FF6B35",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "点餐",
+        "iconPath": "static/tab-menu.png",
+        "selectedIconPath": "static/tab-menu-active.png"
+      },
+      {
+        "pagePath": "pages/order/index",
+        "text": "订单",
+        "iconPath": "static/tab-order.png",
+        "selectedIconPath": "static/tab-order-active.png"
+      }
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "proxies": {
+    "http-proxy": "http://172.22.0.1:7897",
+    "https-proxy": "http://172.22.0.1:7897",
+    "no-proxy": "localhost,127.0.0.1,.local"
+  }
+}
