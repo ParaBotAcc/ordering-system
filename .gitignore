@@ -1,0 +1,28 @@
+# Java
+backend/target/
+*.class
+*.jar
+*.war
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Docker
+docker-daemon-proxy.json
+
+# Env
+.env
+*.env.local
+
+# Temp
+/tmp/
+**/tmp/
