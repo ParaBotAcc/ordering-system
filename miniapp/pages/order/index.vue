@@ -37,6 +37,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { orderApi } from '../../api/index.js'
 
 const orders = ref([])
