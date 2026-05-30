@@ -87,13 +87,13 @@ onLoad(function(options) {
   }
 })
 
-function statusIcon() {
-  const map = {
+const statusIcon = computed(function() {
+  var map = {
     CREATED: '📋', PREPARING: '👨‍🍳', PENDING_CONFIRM: '🔔',
     CONFIRMED: '✅', CLOSED: '✔', VERIFIED: '✅'
   }
-  return map[order.value?.status] || '📋'
-}
+  return map[order.value ? order.value.status : null] || '📋'
+})
 
 function statusText(status) {
   const map = {
