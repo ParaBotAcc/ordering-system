@@ -1,7 +1,9 @@
 <template>
   <view class="page">
     <view class="header">
+      <text class="back" @tap="goHome">← 首页</text>
       <text class="title">我的订单</text>
+      <view style="width:40px"></view>
     </view>
 
     <view v-if="orders.length === 0" class="empty">
@@ -80,6 +82,10 @@ function formatTime(t) {
   return t.slice(0, 16).replace('T', ' ')
 }
 
+function goHome() {
+  uni.navigateBack()
+}
+
 function goDetail(orderNo) {
   uni.navigateTo({ url: `/pages/order-detail/index?orderNo=${orderNo}` })
 }
@@ -87,7 +93,8 @@ function goDetail(orderNo) {
 
 <style>
 .page { min-height: 100vh; background: #F5F5F5; }
-.header { padding: 12px 16px; background: #FFF; }
+.header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #FFF; }
+.back { font-size: 15px; color: #333; }
 .title { font-size: 18px; font-weight: bold; }
 
 .empty { padding: 80px 0; text-align: center; color: #999; font-size: 15px; }

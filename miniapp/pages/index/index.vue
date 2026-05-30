@@ -6,6 +6,7 @@
         <text class="search-icon">🔍</text>
         <text class="search-placeholder">搜索菜品</text>
       </view>
+      <view class="order-btn" @tap="goOrderList">订单</view>
     </view>
 
     <view class="main-content">
@@ -218,6 +219,10 @@ function onSearchTap() {
 
 function loadMore() {}
 
+function goOrderList() {
+  uni.navigateTo({ url: '/pages/order/index' })
+}
+
 function goCheckout() {
   console.log('goCheckout called')
   if (!store.tableNo) {
@@ -297,6 +302,19 @@ function submitOrder() {
   position: sticky;
   top: 0;
   z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.order-btn {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  background: #FF6B35;
+  color: #FFF;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: bold;
 }
 
 .search-input {
