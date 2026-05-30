@@ -42,22 +42,7 @@ public class FeishuBitableClient {
             log.warn("飞书 token 获取失败，跳过 Bitable 初始化");
             return;
         }
-        // 测试写权限：尝试创建一条临时记录，能通则用已有表格
-        boolean writeOk = false;
-        try {
-            Map<String, Object> testRecord = new HashMap<>();
-            testRecord.put("fields", Map.of("订单号", "_probe_" + System.currentTimeMillis()));
-            String testUrl = bitableApi("/tables/" + feishuConfig.getBitable().getOrderTableId() + "/records");
-            restTemplate.exchange(testUrl, HttpMethod.POST, new HttpEntity<>(testRecord, authHeaders()), Map.class);
-            writeOk = true;
-        } catch (Exception ignored) {}
-
-        if (writeOk) {
-            log.info("飞书Bitable写入权限正常，使用已有表格");
-        } else {
-            log.warn("已有Bitable写入权限不足，自动创建新表格...");
-            provisionTables();
-        }
+        log.info("飞书Bitable就绪 (app_token={})", feishuConfig.getBitable().getTableAppToken());
     }
 
     /**
