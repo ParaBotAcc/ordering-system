@@ -10,8 +10,8 @@ import com.ordering.entity.Order;
 import com.ordering.repository.MenuRepository;
 import com.ordering.repository.OrderRepository;
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -23,14 +23,20 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class OrderService {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     private final MenuRepository menuRepository;
     private final OrderRepository orderRepository;
     private final ObjectMapper objectMapper;
+
+    public OrderService(MenuRepository menuRepository, OrderRepository orderRepository, ObjectMapper objectMapper) {
+        this.menuRepository = menuRepository;
+        this.orderRepository = orderRepository;
+        this.objectMapper = objectMapper;
+    }
 
     // 可选 Redis（不存在时使用本地内存兜底）
     @org.springframework.beans.factory.annotation.Autowired(required = false)
@@ -147,20 +153,25 @@ public class OrderService {
         if (redisTemplate != null) {
             try {
                 String key = "stock:" + name;
-                // 先检查 key 是否存在，不存在则初始化（-1=无限）
-                if (Boolean.FALSE.equals(redisTemplate.hasKey(key))) {
-                    redisTemplate.opsForValue().set(key, "-1");
+                // 先检查当前值
+                String current = redisTemplate.opsForValue().get(key);
+                if (current == null) {
+                    // 不存在，从数据库加载真实库存
+                    int dbStock = menuRepository.findByNameAndStatus(name, 1)
+                            .map(Menu::getStock)
+                            .orElse(-1);
+                    redisTemplate.opsForValue().set(key, String.valueOf(dbStock));
+                    current = String.valueOf(dbStock);
                 }
-                Long stock = redisTemplate.opsForValue().decrement(key, quantity);
-                // stock=-1 表示无限库存
-                if (stock != null && (stock == -1 || stock >= 0)) {
-                    if (stock == -1) {
-                        // 无限库存，回滚本次扣减（-1 是哨兵值）
-                        redisTemplate.opsForValue().increment(key, quantity);
-                    }
+                // -1 = 无限库存，直接通过
+                if ("-1".equals(current)) {
                     return true;
                 }
-                // stock < -1 => 超额扣减失败
+                Long stock = redisTemplate.opsForValue().decrement(key, quantity);
+                if (stock >= 0) {
+                    return true;
+                }
+                // 超额扣减，回滚
                 redisTemplate.opsForValue().increment(key, quantity);
                 return false;
             } catch (Exception e) {
