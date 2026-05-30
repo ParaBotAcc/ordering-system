@@ -76,18 +76,21 @@ const parsedItems = computed(() => {
   catch { return [] }
 })
 
-onMounted(() => {
-  const pages = getCurrentPages()
-  const { orderNo } = pages[pages.length - 1].$page.options
-  if (orderNo) loadOrder(orderNo)
+onMounted(function() {
+  var pages = getCurrentPages()
+  if (pages.length <= 0) return
+  var page = pages[pages.length - 1]
+  var opts = page.$page && page.$page.options
+  if (opts && opts.orderNo) loadOrder(opts.orderNo)
 })
 
-async function loadOrder(orderNo) {
-  try {
-    order.value = await orderApi.get(orderNo)
-  } catch (e) {
+function loadOrder(orderNo) {
+  if (!orderNo) return
+  orderApi.get(orderNo).then(function(data) {
+    order.value = data
+  }).catch(function() {
     uni.showToast({ title: '加载订单失败', icon: 'none' })
-  }
+  })
 }
 
 function statusIcon() {
