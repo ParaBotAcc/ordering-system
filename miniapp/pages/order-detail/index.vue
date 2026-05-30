@@ -71,10 +71,14 @@ import { orderApi } from '../../api/index.js'
 const order = ref(null)
 const confirmedItems = ref([])
 
-const parsedItems = computed(() => {
+const parsedItems = computed(function() {
   if (!order.value) return []
-  try { return JSON.parse(order.value.items) }
-  catch { return [] }
+  var items = order.value.items
+  if (typeof items === 'string') {
+    try { return JSON.parse(items) } catch(e) { return [] }
+  }
+  if (Array.isArray(items)) return items
+  return []
 })
 
 onLoad(function(options) {

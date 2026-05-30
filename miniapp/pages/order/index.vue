@@ -70,11 +70,16 @@ function statusText(status) {
   return map[status] || status
 }
 
-function orderItemsPreview(itemsStr) {
-  try {
-    var items = JSON.parse(itemsStr)
-    return items.map(function(i) { return i.name + 'x' + i.quantity }).join('、')
-  } catch(e) { return itemsStr }
+function orderItemsPreview(items) {
+  var list
+  if (typeof items === 'string') {
+    try { list = JSON.parse(items) } catch(e) { return items }
+  } else if (Array.isArray(items)) {
+    list = items
+  } else {
+    return ''
+  }
+  return list.map(function(i) { return i.name + 'x' + i.quantity }).join('、')
 }
 
 function formatTime(t) {
