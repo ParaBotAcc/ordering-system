@@ -224,6 +224,32 @@ public class OrderService {
     @Transactional
     public Order confirmPickup(OrderConfirmRequest request) {
         Order order = getOrder(request.getOrderNo());
+
+        // 只能从 PENDING_CONFIRM 确认
+        if (!"PENDING_CONFIRM".equals(order.getStatus())) {
+            throw new RuntimeException("当前订单状态不支持确认取餐: " + order.getStatus());
+        }
+
+        // 解析订单中的所有菜品名
+        Set<String> allItemNames = new HashSet<>();
+        try {
+            OrderRequest.OrderItem[] items = objectMapper.readValue(order.getItems(), OrderRequest.OrderItem[].class);
+            for (OrderRequest.OrderItem item : items) {
+                allItemNames.add(item.getName());
+            }
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("解析订单菜品失败", e);
+        }
+
+        // 检查是否全选
+        Set<String> confirmedSet = new HashSet<>(request.getConfirmedItemNames());
+        if (!confirmedSet.equals(allItemNames)) {
+            List<String> missing = allItemNames.stream()
+                    .filter(n -> !confirmedSet.contains(n))
+                    .toList();
+            throw new RuntimeException("请确认所有菜品后再提交，缺少: " + String.join(", ", missing));
+        }
+
         try {
             order.setConfirmDetail(objectMapper.writeValueAsString(request.getConfirmedItemNames()));
         } catch (JsonProcessingException e) {

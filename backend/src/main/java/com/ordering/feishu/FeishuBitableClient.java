@@ -81,6 +81,9 @@ public class FeishuBitableClient {
             );
             feishuConfig.getBitable().setOrderTableId(defaultTableId);
 
+            // 重命名默认主字段 "文本" → "订单号"
+            renameDefaultPrimaryField(appToken, defaultTableId);
+
             // 添加订单表字段
             addField(appToken, defaultTableId, "桌号", 1, null);
             addField(appToken, defaultTableId, "菜品明细", 1, null);
@@ -178,6 +181,14 @@ public class FeishuBitableClient {
 
     // ==================== 订单同步（异步，不阻塞主流程） ====================
 
+    /** 检查 Feishu API 响应体中的 code 字段，0=成功 */
+    private boolean isApiSuccess(Map<String, Object> body) {
+        if (body == null) return false;
+        Object code = body.get("code");
+        // code 可能是 Integer 或 Long
+        return code != null && (code.equals(0) || code.equals(0L));
+    }
+
     public void syncOrderToBitable(String orderNo, String tableNo, String items, int totalPrice, String status) {
         CompletableFuture.runAsync(() -> {
             try {
@@ -193,8 +204,13 @@ public class FeishuBitableClient {
                 body.put("fields", fields);
                 String url = bitableApi("/tables/" + feishuConfig.getBitable().getOrderTableId() + "/records");
                 var resp = restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<>(body, authHeaders()), Map.class);
-                if (resp.getStatusCode().is2xxSuccessful()) {
+                Map<String, Object> respBody = resp.getBody();
+                if (resp.getStatusCode().is2xxSuccessful() && isApiSuccess(respBody)) {
                     log.info("飞书订单同步成功: {}", orderNo);
+                } else {
+                    log.warn("飞书订单同步API返回异常: {} code={} msg={}", orderNo,
+                            respBody != null ? respBody.get("code") : "N/A",
+                            respBody != null ? respBody.get("msg") : "N/A");
                 }
             } catch (Exception e) {
                 log.warn("飞书订单同步失败: {} - {}", orderNo, e.getMessage());
@@ -235,11 +251,22 @@ public class FeishuBitableClient {
 
     // ==================== 轮询/读取 ====================
 
-    public Map<String, String> listOrdersFromBitable() {
-        Map<String, String> result = new HashMap<>();
+    /** 订单快照：从 Bitable 读取的关键字段 */
+    public static class OrderSnapshot {
+        public String orderNo;
+        public String tableNo;
+        public String items;
+        public Integer totalPrice;
+        public String status;
+        public String note;
+    }
+
+    /** 从 Bitable 拉取所有订单（含完整字段），用于双向同步 */
+    public List<OrderSnapshot> listOrdersFromBitable() {
+        List<OrderSnapshot> result = new ArrayList<>();
         try {
             if (getTenantToken() == null) return result;
-            String url = bitableApi("/tables/" + feishuConfig.getBitable().getOrderTableId() + "/records?page_size=50");
+            String url = bitableApi("/tables/" + feishuConfig.getBitable().getOrderTableId() + "/records?page_size=100");
             var resp = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(authHeaders()), Map.class);
             Map<String, Object> data = (Map<String, Object>) resp.getBody().get("data");
             if (data == null) return result;
@@ -247,14 +274,42 @@ public class FeishuBitableClient {
             for (Map<String, Object> item : items) {
                 Map<String, Object> f = (Map<String, Object>) item.get("fields");
                 if (f == null) continue;
-                String orderNo = (String) f.get("订单号");
-                String status = (String) f.get("状态");
-                if (orderNo != null && status != null) result.put(orderNo, status);
+                OrderSnapshot s = new OrderSnapshot();
+                s.orderNo   = asString(f.get("订单号"));
+                s.tableNo   = asString(f.get("桌号"));
+                s.items     = asString(f.get("菜品明细"));
+                s.totalPrice = asInt(f.get("总价"));
+                s.status    = asString(f.get("状态"));
+                s.note      = asString(f.get("备注"));
+                if (s.orderNo != null && s.status != null) {
+                    result.add(s);
+                }
             }
         } catch (Exception e) {
             log.debug("读取飞书订单失败: {}", e.getMessage());
         }
         return result;
+    }
+
+    /** Bitable 文本字段可能是 String 或 List<{text:...}> */
+    private String asString(Object val) {
+        if (val == null) return null;
+        if (val instanceof String s) return s;
+        if (val instanceof List<?> list && !list.isEmpty()) {
+            Object first = list.get(0);
+            if (first instanceof Map<?, ?> m) {
+                Object t = m.get("text");
+                return t != null ? t.toString() : null;
+            }
+            return first.toString();
+        }
+        return val.toString();
+    }
+
+    private Integer asInt(Object val) {
+        if (val == null) return null;
+        if (val instanceof Number n) return n.intValue();
+        try { return Integer.parseInt(val.toString()); } catch (NumberFormatException e) { return null; }
     }
 
     public void syncMenuFromBitable() {
@@ -272,5 +327,38 @@ public class FeishuBitableClient {
 
     public void handleBitableChange(String tableId, String recordId) {
         log.info("飞书表格变更: table={}, record={}", tableId, recordId);
+    }
+
+    /** 重命名默认主字段 "文本" → "订单号"，供 provisionTables 调用 */
+    private void renameDefaultPrimaryField(String appToken, String tableId) {
+        try {
+            // 查出当前字段列表，找到主字段
+            String listUrl = BASE_URL + "/bitable/v1/apps/" + appToken + "/tables/" + tableId + "/fields";
+            var listResp = restTemplate.exchange(listUrl, HttpMethod.GET, new HttpEntity<>(authHeaders()), Map.class);
+            Map<String, Object> data = (Map<String, Object>) listResp.getBody().get("data");
+            if (data == null) return;
+            List<Map<String, Object>> fields = (List<Map<String, Object>>) data.get("items");
+            for (Map<String, Object> f : fields) {
+                if (Boolean.TRUE.equals(f.get("is_primary"))) {
+                    String fid = (String) f.get("field_id");
+                    String fname = (String) f.get("field_name");
+                    if (!"订单号".equals(fname)) {
+                        Map<String, Object> renameBody = new HashMap<>();
+                        renameBody.put("field_name", "订单号");
+                        renameBody.put("type", 1);
+                        String renameUrl = BASE_URL + "/bitable/v1/apps/" + appToken
+                                + "/tables/" + tableId + "/fields/" + fid;
+                        var renameResp = restTemplate.exchange(renameUrl, HttpMethod.PUT,
+                                new HttpEntity<>(renameBody, authHeaders()), Map.class);
+                        if (isApiSuccess(renameResp.getBody())) {
+                            log.info("默认主字段 {}→订单号 重命名成功", fname);
+                        }
+                    }
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("重命名默认主字段失败", e);
+        }
     }
 }

@@ -54,11 +54,13 @@ public class OrderWebSocketHandler extends TextWebSocketHandler {
             try {
                 String payload = "{\"orderNo\":\"" + orderNo + "\",\"status\":\"" + status + "\"}";
                 session.sendMessage(new TextMessage(payload));
-                log.debug("WS推送: {} -> {}", orderNo, status);
+                log.info("WS推送成功: {} -> {}", orderNo, status);
             } catch (IOException e) {
                 log.warn("WS推送失败: {}", e.getMessage());
                 sessions.remove(orderNo);
             }
+        } else {
+            log.debug("WS无连接客户端，跳过推送: {} -> {}", orderNo, status);
         }
     }
 

@@ -51,7 +51,7 @@
           <text class="confirm-item-name">{{ item.name }}</text>
           <text class="confirm-item-qty">x{{ item.quantity }}</text>
         </view>
-        <view class="confirm-btn" @tap="submitConfirm" :class="{ disabled: confirmedItems.length === 0 }">
+        <view class="confirm-btn" @tap="submitConfirm" :class="{ disabled: confirmedItems.length < parsedItems.length }">
           确认取餐（{{ confirmedItems.length }}/{{ parsedItems.length }}）
         </view>
       </view>
@@ -64,12 +64,13 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { orderApi } from '../../api/index.js'
 
 const order = ref(null)
 const confirmedItems = ref([])
+var wsTask = null
 
 const parsedItems = computed(function() {
   if (!order.value) return []
@@ -85,11 +86,54 @@ onLoad(function(options) {
   if (options && options.orderNo) {
     orderApi.get(options.orderNo).then(function(data) {
       order.value = data
+      connectWebSocket(data.orderNo)
     }).catch(function() {
       uni.showToast({ title: '加载订单失败', icon: 'none' })
     })
   }
 })
+
+onUnmounted(function() {
+  if (wsTask) {
+    wsTask.close()
+    wsTask = null
+  }
+})
+
+function connectWebSocket(orderNo) {
+  // uni-app WebSocket 连接
+  var protocol = 'ws'
+  var host = 'localhost:8080'
+  // 生产环境：通过小程序后台配置合法域名，或从环境变量读
+  // #ifdef H5
+  host = window.location.host
+  // #endif
+  wsTask = uni.connectSocket({
+    url: protocol + '://' + host + '/ws/order?orderNo=' + orderNo,
+    success: function() { console.log('WS连接成功', orderNo) },
+    fail: function(err) { console.warn('WS连接失败', JSON.stringify(err)) }
+  })
+  uni.onSocketOpen(function() {
+    console.log('WS通道已建立')
+  })
+  uni.onSocketMessage(function(res) {
+    try {
+      var data = JSON.parse(res.data)
+      if (data.orderNo === orderNo && data.status && order.value) {
+        order.value.status = data.status
+        uni.showToast({ title: '订单状态已更新', icon: 'none' })
+      }
+    } catch(e) {
+      console.warn('WS消息解析失败', res.data)
+    }
+  })
+  uni.onSocketError(function(err) {
+    console.warn('WS错误', JSON.stringify(err))
+  })
+  uni.onSocketClose(function() {
+    console.log('WS已关闭')
+  })
+}
 
 const statusIcon = computed(function() {
   var map = {
@@ -128,7 +172,7 @@ function toggleConfirm(name) {
 }
 
 function submitConfirm() {
-  if (confirmedItems.value.length === 0) return
+  if (confirmedItems.value.length < parsedItems.value.length) return
   orderApi.confirmPickup({
     orderNo: order.value.orderNo,
     confirmedItemNames: confirmedItems.value
