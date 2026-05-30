@@ -64,13 +64,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted, onActivated } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { orderApi } from '../../api/index.js'
 
 const order = ref(null)
 const confirmedItems = ref([])
-var wsTask = null
 
 const parsedItems = computed(function() {
   if (!order.value) return []
@@ -86,90 +85,32 @@ onLoad(function(options) {
   if (options && options.orderNo) {
     orderApi.get(options.orderNo).then(function(data) {
       order.value = data
-      connectWebSocket(data.orderNo)
     }).catch(function() {
       uni.showToast({ title: '加载订单失败', icon: 'none' })
     })
   }
 })
 
-onUnmounted(function() {
-  if (wsTask) {
-    wsTask.close()
-    wsTask = null
+// 监听全局 WS 推送
+var wsHandler = null
+onActivated(function() {
+  // 每次页面激活时注册监听
+  if (wsHandler) return
+  wsHandler = function(data) {
+    if (order.value && data.orderNo === order.value.orderNo && data.status) {
+      order.value.status = data.status
+      uni.showToast({ title: '订单状态已更新', icon: 'none' })
+    }
   }
+  uni.$on('orderStatusChanged', wsHandler)
 })
 
-// 获取 WebSocket 服务器地址，兼容 H5 和小程序
-function getWsHost() {
-  // #ifdef H5
-  return window.location.host
-  // #endif
-  // #ifdef MP-WEIXIN
-  return 'localhost:8080'
-  // #endif
-  return 'localhost:8080'
-}
-
-function connectWebSocket(orderNo) {
-  console.log('WS开始连接:', orderNo)
-  var url = 'ws://' + getWsHost() + '/ws/order?orderNo=' + orderNo
-  console.log('WS目标:', url)
-
-  try {
-    // 先尝试 SocketTask API（uni-app 3+）
-    wsTask = uni.connectSocket({ url: url })
-    console.log('wsTask类型:', typeof wsTask, wsTask ? '有对象' : 'undefined')
-
-    if (wsTask && typeof wsTask.onOpen === 'function') {
-      wsTask.onOpen(function() {
-        console.log('[WS] 通道已建立:', orderNo)
-      })
-      wsTask.onError(function(err) {
-        console.warn('[WS] 错误:', JSON.stringify(err))
-      })
-      wsTask.onMessage(function(res) {
-        try {
-          var data = JSON.parse(res.data)
-          if (data.orderNo === orderNo && data.status && order.value) {
-            order.value.status = data.status
-            uni.showToast({ title: '订单状态已更新', icon: 'none' })
-          }
-        } catch(e) {
-          console.warn('[WS] 消息解析失败:', res.data)
-        }
-      })
-      wsTask.onClose(function() {
-        console.log('[WS] 已关闭:', orderNo)
-      })
-    } else {
-      // SocketTask 不可用，回退到全局监听器
-      console.log('[WS] SocketTask不可用，回退全局监听')
-      uni.onSocketOpen(function() {
-        console.log('[WS-global] 通道已建立:', orderNo)
-      })
-      uni.onSocketError(function(err) {
-        console.warn('[WS-global] 错误:', JSON.stringify(err))
-      })
-      uni.onSocketMessage(function(res) {
-        try {
-          var data = JSON.parse(res.data)
-          if (data.orderNo === orderNo && data.status && order.value) {
-            order.value.status = data.status
-            uni.showToast({ title: '订单状态已更新', icon: 'none' })
-          }
-        } catch(e) {
-          console.warn('[WS-global] 消息解析失败:', res.data)
-        }
-      })
-      uni.onSocketClose(function() {
-        console.log('[WS-global] 已关闭:', orderNo)
-      })
-    }
-  } catch(e) {
-    console.error('[WS] 连接异常:', e.message, e.stack)
+onUnmounted(function() {
+  if (wsHandler) {
+    uni.$off('orderStatusChanged', wsHandler)
+    wsHandler = null
   }
-}
+})
 
 const statusIcon = computed(function() {
   var map = {

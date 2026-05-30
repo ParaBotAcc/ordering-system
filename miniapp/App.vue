@@ -15,6 +15,18 @@
 </template>
 
 <script setup>
+import { onLaunch, onHide } from '@dcloudio/uni-app'
+import { connectWs, disconnectWs } from '@/api/websocket.js'
+
+onLaunch(function() {
+  // 应用启动后建立全局 WS 长连接
+  connectWs()
+})
+
+onHide(function() {
+  // 切到后台时断开（小程序规范）
+  disconnectWs()
+})
 </script>
 
 <style>
