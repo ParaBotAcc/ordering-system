@@ -103,43 +103,72 @@ onUnmounted(function() {
 // 获取 WebSocket 服务器地址，兼容 H5 和小程序
 function getWsHost() {
   // #ifdef H5
-  return window.location.host  // H5: 直接用页面域名
+  return window.location.host
   // #endif
   // #ifdef MP-WEIXIN
-  return 'localhost:8080'       // 小程序: 真机需改为局域网IP
+  return 'localhost:8080'
   // #endif
   return 'localhost:8080'
 }
 
 function connectWebSocket(orderNo) {
+  console.log('WS开始连接:', orderNo)
   var url = 'ws://' + getWsHost() + '/ws/order?orderNo=' + orderNo
+  console.log('WS目标:', url)
 
-  // uni-app 推荐使用 SocketTask API（兼容 H5 / 小程序）
-  wsTask = uni.connectSocket({ url: url })
+  try {
+    // 先尝试 SocketTask API（uni-app 3+）
+    wsTask = uni.connectSocket({ url: url })
+    console.log('wsTask类型:', typeof wsTask, wsTask ? '有对象' : 'undefined')
 
-  wsTask.onOpen(function() {
-    console.log('WS通道已建立:', orderNo)
-  })
-
-  wsTask.onError(function(err) {
-    console.warn('WS错误:', JSON.stringify(err))
-  })
-
-  wsTask.onMessage(function(res) {
-    try {
-      var data = JSON.parse(res.data)
-      if (data.orderNo === orderNo && data.status && order.value) {
-        order.value.status = data.status
-        uni.showToast({ title: '订单状态已更新', icon: 'none' })
-      }
-    } catch(e) {
-      console.warn('WS消息解析失败:', res.data)
+    if (wsTask && typeof wsTask.onOpen === 'function') {
+      wsTask.onOpen(function() {
+        console.log('[WS] 通道已建立:', orderNo)
+      })
+      wsTask.onError(function(err) {
+        console.warn('[WS] 错误:', JSON.stringify(err))
+      })
+      wsTask.onMessage(function(res) {
+        try {
+          var data = JSON.parse(res.data)
+          if (data.orderNo === orderNo && data.status && order.value) {
+            order.value.status = data.status
+            uni.showToast({ title: '订单状态已更新', icon: 'none' })
+          }
+        } catch(e) {
+          console.warn('[WS] 消息解析失败:', res.data)
+        }
+      })
+      wsTask.onClose(function() {
+        console.log('[WS] 已关闭:', orderNo)
+      })
+    } else {
+      // SocketTask 不可用，回退到全局监听器
+      console.log('[WS] SocketTask不可用，回退全局监听')
+      uni.onSocketOpen(function() {
+        console.log('[WS-global] 通道已建立:', orderNo)
+      })
+      uni.onSocketError(function(err) {
+        console.warn('[WS-global] 错误:', JSON.stringify(err))
+      })
+      uni.onSocketMessage(function(res) {
+        try {
+          var data = JSON.parse(res.data)
+          if (data.orderNo === orderNo && data.status && order.value) {
+            order.value.status = data.status
+            uni.showToast({ title: '订单状态已更新', icon: 'none' })
+          }
+        } catch(e) {
+          console.warn('[WS-global] 消息解析失败:', res.data)
+        }
+      })
+      uni.onSocketClose(function() {
+        console.log('[WS-global] 已关闭:', orderNo)
+      })
     }
-  })
-
-  wsTask.onClose(function() {
-    console.log('WS已关闭:', orderNo)
-  })
+  } catch(e) {
+    console.error('[WS] 连接异常:', e.message, e.stack)
+  }
 }
 
 const statusIcon = computed(function() {
