@@ -218,39 +218,37 @@ function onSearchTap() {
 
 function loadMore() {}
 
-async function goCheckout() {
+function goCheckout() {
   console.log('goCheckout called')
   if (!store.tableNo) {
-    // 小程序不支持 showModal editable，使用自定义弹窗
     showTableInput.value = true
     return
   }
+  doCreateOrder(function() {
+    showDrawer.value = false
+    showTableInput.value = false
+  })
+}
 
-  try {
-    const order = await orderApi.create({
-      tableNo: store.tableNo,
-      items: cart.value.map(c => ({
-        name: c.name,
-        spec: c.spec || '',
-        price: c.price,
-        quantity: c.quantity,
-        subtotal: c.subtotal
-      })),
-      note: ''
-    })
+function doCreateOrder(onSuccess) {
+  var items = cart.value.map(function(c) {
+    return { name: c.name, spec: c.spec || '', price: c.price, quantity: c.quantity, subtotal: c.subtotal }
+  })
+  if (items.length === 0) return
+  orderApi.create({ tableNo: store.tableNo, items: items, note: '' }).then(function(order) {
     if (!order || !order.orderNo) {
       console.error('下单响应异常:', JSON.stringify(order))
       uni.showToast({ title: '响应异常,请检查后端', icon: 'none' })
       return
     }
     store.clearCart()
-    showDrawer.value = false
+    if (onSuccess) onSuccess()
     uni.showToast({ title: '下单成功', icon: 'success' })
-    uni.navigateTo({ url: `/pages/order-detail/index?orderNo=${order.orderNo}` })
-  } catch (e) {
+    uni.navigateTo({ url: '/pages/order-detail/index?orderNo=' + order.orderNo })
+  }).catch(function(e) {
     console.error('下单失败:', e)
-    uni.showToast({ title: (typeof e === 'string' ? e : e?.message) || '下单失败', icon: 'none' })
-  }
+    uni.showToast({ title: (typeof e === 'string' ? e : (e && e.message)) || '下单失败', icon: 'none' })
+  })
 }
 
 function confirmTableInput() {
@@ -270,33 +268,11 @@ function cancelTableInput() {
   tableInputValue.value = ''
 }
 
-async function submitOrder() {
-  if (cart.value.length === 0) return
-  try {
-    const order = await orderApi.create({
-      tableNo: store.tableNo,
-      items: cart.value.map(c => ({
-        name: c.name,
-        spec: c.spec || '',
-        price: c.price,
-        quantity: c.quantity,
-        subtotal: c.subtotal
-      })),
-      note: ''
-    })
-    if (!order || !order.orderNo) {
-      console.error('下单响应异常:', JSON.stringify(order))
-      uni.showToast({ title: '响应异常,请检查后端', icon: 'none' })
-      return
-    }
-    store.clearCart()
+function submitOrder() {
+  doCreateOrder(function() {
     showDrawer.value = false
-    uni.showToast({ title: '下单成功', icon: 'success' })
-    uni.navigateTo({ url: `/pages/order-detail/index?orderNo=${order.orderNo}` })
-  } catch (e) {
-    console.error('下单失败:', e)
-    uni.showToast({ title: (typeof e === 'string' ? e : e?.message) || '下单失败', icon: 'none' })
-  }
+    showTableInput.value = false
+  })
 }
 </script>
 
