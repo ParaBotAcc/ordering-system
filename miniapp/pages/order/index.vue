@@ -18,17 +18,17 @@
       >
         <view class="order-header">
           <text class="order-no">#{{ order.orderNo.slice(-8) }}</text>
-          <text class="order-status" :class="'status-' + order.status">{{ statusText(order.status) }}</text>
+          <text class="order-status" :class="'status-' + order.status">{{ order._statusText }}</text>
         </view>
         <view class="order-table">
           <text>桌号：{{ order.tableNo }}</text>
         </view>
         <view class="order-items">
-          <text class="order-items-text">{{ orderItemsPreview(order.items) }}</text>
+          <text class="order-items-text">{{ order._itemsPreview }}</text>
         </view>
         <view class="order-footer">
           <text class="order-total">¥{{ (order.totalPrice / 100).toFixed(2) }}</text>
-          <text class="order-time">{{ formatTime(order.createdAt) }}</text>
+          <text class="order-time">{{ order._time }}</text>
         </view>
       </view>
     </scroll-view>
@@ -46,31 +46,33 @@ onShow(() => {
   loadOrders()
 })
 
-async function loadOrders() {
-  try {
-    orders.value = await orderApi.listAll()
-  } catch (e) {
+function loadOrders() {
+  orderApi.listAll().then(function(data) {
+    orders.value = (data || []).map(function(o) {
+      return Object.assign({}, o, {
+        _statusText: statusText(o.status),
+        _itemsPreview: orderItemsPreview(o.items),
+        _time: formatTime(o.createdAt)
+      })
+    })
+  }).catch(function(e) {
     console.error('加载订单失败', e)
-  }
+  })
 }
 
 function statusText(status) {
-  const map = {
-    CREATED: '已提交',
-    PREPARING: '备餐中',
-    PENDING_CONFIRM: '待确认',
-    CONFIRMED: '已确认',
-    CLOSED: '已完成',
-    VERIFIED: '已核销'
+  var map = {
+    CREATED: '已提交', PREPARING: '备餐中', PENDING_CONFIRM: '待确认',
+    CONFIRMED: '已确认', CLOSED: '已完成', VERIFIED: '已核销'
   }
   return map[status] || status
 }
 
 function orderItemsPreview(itemsStr) {
   try {
-    const items = JSON.parse(itemsStr)
-    return items.map(i => `${i.name}x${i.quantity}`).join('、')
-  } catch { return itemsStr }
+    var items = JSON.parse(itemsStr)
+    return items.map(function(i) { return i.name + 'x' + i.quantity }).join('、')
+  } catch(e) { return itemsStr }
 }
 
 function formatTime(t) {

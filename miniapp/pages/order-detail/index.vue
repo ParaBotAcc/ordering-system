@@ -11,8 +11,8 @@
       <view class="status-card" :class="'bg-' + order.status">
         <text class="status-icon">{{ statusIcon }}</text>
         <view>
-          <text class="status-title">{{ statusText(order.status) }}</text>
-          <text class="status-desc">{{ statusDesc(order.status) }}</text>
+          <text class="status-title">{{ orderStatusText }}</text>
+          <text class="status-desc">{{ orderStatusDesc }}</text>
         </view>
       </view>
 
@@ -95,16 +95,18 @@ const statusIcon = computed(function() {
   return map[order.value ? order.value.status : null] || '📋'
 })
 
-function statusText(status) {
-  const map = {
+const orderStatusText = computed(function() {
+  if (!order.value) return ''
+  var map = {
     CREATED: '已提交', PREPARING: '备餐中', PENDING_CONFIRM: '待取餐确认',
     CONFIRMED: '已确认', CLOSED: '已完成', VERIFIED: '已核销'
   }
-  return map[status] || status
-}
+  return map[order.value.status] || order.value.status
+})
 
-function statusDesc(status) {
-  const map = {
+const orderStatusDesc = computed(function() {
+  if (!order.value) return ''
+  var map = {
     CREATED: '订单已提交，等待商家处理',
     PREPARING: '商家正在为您备餐',
     PENDING_CONFIRM: '请确认您取走的菜品',
@@ -112,8 +114,8 @@ function statusDesc(status) {
     CLOSED: '订单已完成',
     VERIFIED: '订单已核销'
   }
-  return map[status] || ''
-}
+  return map[order.value.status] || ''
+})
 
 function toggleConfirm(name) {
   const idx = confirmedItems.value.indexOf(name)
@@ -121,18 +123,17 @@ function toggleConfirm(name) {
   else confirmedItems.value.push(name)
 }
 
-async function submitConfirm() {
+function submitConfirm() {
   if (confirmedItems.value.length === 0) return
-  try {
-    await orderApi.confirmPickup({
-      orderNo: order.value.orderNo,
-      confirmedItemNames: confirmedItems.value
-    })
+  orderApi.confirmPickup({
+    orderNo: order.value.orderNo,
+    confirmedItemNames: confirmedItems.value
+  }).then(function() {
     order.value.status = 'CONFIRMED'
     uni.showToast({ title: '取餐确认成功', icon: 'success' })
-  } catch (e) {
-    uni.showToast({ title: e.message || '提交失败', icon: 'none' })
-  }
+  }).catch(function(e) {
+    uni.showToast({ title: (e && e.message) || '提交失败', icon: 'none' })
+  })
 }
 
 function goBack() {
