@@ -6,15 +6,17 @@ function request(path, options = {}) {
       url: `${BASE_URL}${path}`,
       method: options.method || 'GET',
       data: options.data,
+      dataType: 'json',
       header: {
         'Content-Type': 'application/json',
         ...options.headers
       },
       success: (res) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
-          resolve(res.data)
+          const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
+          resolve(data)
         } else {
-          reject({ code: res.statusCode, message: res.data?.message || '请求失败' })
+          reject({ code: res.statusCode, message: (typeof res.data === 'object' ? res.data?.message : null) || '请求失败' })
         }
       },
       fail: (err) => {
