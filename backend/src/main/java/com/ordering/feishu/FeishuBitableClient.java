@@ -197,6 +197,47 @@ public class FeishuBitableClient {
         }
     }
 
+    // ==================== 轮询同步 ====================
+
+    /**
+     * 从飞书订单表读取所有订单记录，返回 Map<订单号, 状态>
+     * 供 FeishuSyncService 定时轮询使用
+     */
+    public Map<String, String> listOrdersFromBitable() {
+        Map<String, String> result = new HashMap<>();
+        try {
+            String url = bitableApi("/tables/" + feishuConfig.getBitable().getOrderTableId()
+                    + "/records?page_size=50");
+            var exchange = restTemplate.exchange(
+                    url, HttpMethod.GET,
+                    new HttpEntity<>(authHeaders()),
+                    Map.class
+            );
+            Map<String, Object> body = exchange.getBody();
+            if (body == null) return result;
+
+            Map<String, Object> data = (Map<String, Object>) body.get("data");
+            if (data == null) return result;
+
+            List<Map<String, Object>> items = (List<Map<String, Object>>) data.get("items");
+            if (items == null) return result;
+
+            for (Map<String, Object> item : items) {
+                Map<String, Object> fields = (Map<String, Object>) item.get("fields");
+                if (fields == null) continue;
+                String orderNo = (String) fields.get("订单号");
+                String status = (String) fields.get("状态");
+                if (orderNo != null && status != null) {
+                    result.put(orderNo, status);
+                }
+            }
+            log.debug("从飞书读取 {} 条订单记录", result.size());
+        } catch (Exception e) {
+            log.debug("读取飞书订单失败: {}", e.getMessage());
+        }
+        return result;
+    }
+
     // ==================== 监听事件 ====================
 
     /**

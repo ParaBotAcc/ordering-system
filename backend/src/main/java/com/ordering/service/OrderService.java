@@ -7,7 +7,9 @@ import com.ordering.dto.OrderConfirmRequest;
 import com.ordering.dto.OrderRequest;
 import com.ordering.entity.Menu;
 import com.ordering.entity.Order;
+import com.ordering.feishu.FeishuBitableClient;
 import com.ordering.repository.MenuRepository;
+import com.ordering.websocket.OrderWebSocketHandler;
 import com.ordering.repository.OrderRepository;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
@@ -31,11 +33,17 @@ public class OrderService {
     private final MenuRepository menuRepository;
     private final OrderRepository orderRepository;
     private final ObjectMapper objectMapper;
+    private final FeishuBitableClient feishuClient;
+    private final OrderWebSocketHandler webSocketHandler;
 
-    public OrderService(MenuRepository menuRepository, OrderRepository orderRepository, ObjectMapper objectMapper) {
+    public OrderService(MenuRepository menuRepository, OrderRepository orderRepository,
+                        ObjectMapper objectMapper, FeishuBitableClient feishuClient,
+                        OrderWebSocketHandler webSocketHandler) {
         this.menuRepository = menuRepository;
         this.orderRepository = orderRepository;
         this.objectMapper = objectMapper;
+        this.feishuClient = feishuClient;
+        this.webSocketHandler = webSocketHandler;
     }
 
     // 可选 Redis（不存在时使用本地内存兜底）
@@ -146,6 +154,9 @@ public class OrderService {
 
         Order saved = orderRepository.save(order);
         log.info("订单创建成功: {}", orderNo);
+        feishuClient.syncOrderToBitable(orderNo, request.getTableNo(),
+                order.getItems(), total, "CREATED");
+        webSocketHandler.notifyOrderStatus(orderNo, "CREATED");
         return saved;
     }
 
@@ -204,7 +215,10 @@ public class OrderService {
         Order order = getOrder(orderNo);
         order.setStatus(status);
         order.setUpdatedAt(LocalDateTime.now());
-        return orderRepository.save(order);
+        Order saved = orderRepository.save(order);
+        feishuClient.updateOrderStatus(orderNo, status);
+        webSocketHandler.notifyOrderStatus(orderNo, status);
+        return saved;
     }
 
     @Transactional
@@ -217,7 +231,10 @@ public class OrderService {
         }
         order.setStatus("CONFIRMED");
         order.setUpdatedAt(LocalDateTime.now());
-        return orderRepository.save(order);
+        Order saved = orderRepository.save(order);
+        feishuClient.updateOrderStatus(request.getOrderNo(), "CONFIRMED");
+        webSocketHandler.notifyOrderStatus(request.getOrderNo(), "CONFIRMED");
+        return saved;
     }
 
     @Transactional
