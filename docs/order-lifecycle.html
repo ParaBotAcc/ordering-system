@@ -1,0 +1,166 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>点餐系统 - 订单生命周期</title>
+<style>
+  body {
+    margin: 0;
+    background: #f8fafc;
+    color: #172033;
+    font: 14px/1.5 ui-sans-serif, system-ui, sans-serif;
+  }
+  main {
+    max-width: 1100px;
+    margin: 20px auto;
+    padding: 0 20px;
+  }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .sub { color: #5b6475; margin-bottom: 24px; }
+  .mermaid { text-align: center; }
+  .legend {
+    margin-top: 24px;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+  }
+  .dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .dot-actor1 { background: #60a5fa; }
+  .dot-actor2 { background: #a78bfa; }
+  .dot-actor3 { background: #f59e0b; }
+  .dot-db { background: #34d399; }
+  .dot-state { background: #f87171; border: 2px solid #dc2626; }
+</style>
+<main>
+  <h1>📋 点餐系统 - 订单生命周期</h1>
+  <p class="sub">泳道图：顾客 → 前端小程序 → 后端 API → 数据层</p>
+
+  <div class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': {
+  'actorBkg': '#e8f4fd',
+  'actorLineColor': '#3b82f6',
+  'signalColor': '#64748b',
+  'signalTextColor': '#172033',
+  'labelBoxBkgColor': '#f1f5f9',
+  'labelBoxBorderColor': '#94a3b8',
+  'labelTextColor': '#172033',
+  'loopTextColor': '#5b6475',
+  'activationBorderColor': '#818cf8',
+  'activationBkgColor': '#e0e7ff',
+  'sequenceNumberColor': '#172033'
+}}}%%
+sequenceDiagram
+    participant 顾客 as 🧑 顾客
+    participant 前端 as 📱 小程序
+    participant 后端 as ⚙️ 后端 API
+    participant 数据层 as 🗄️ 数据层
+
+    Note over 顾客,数据层: ① 点餐流程
+
+    顾客->>前端: 浏览菜单
+    前端->>后端: GET /api/menu
+    后端->>数据层: 查询菜品列表
+    数据层-->>后端: 菜品分类 + 菜品数据
+    后端-->>前端: MenuResponse (4分类16菜品)
+    前端-->>顾客: 渲染菜品列表
+
+    顾客->>前端: 添加菜品到购物车
+    前端-->>顾客: 更新购物车角标
+
+    顾客->>前端: 输入桌号
+    前端->>前端: uni.setStorageSync 持久化
+    前端-->>顾客: 桌号已保存
+
+    顾客->>前端: 提交订单
+
+    前端->>后端: POST /api/order { tableNo, items }
+    后端->>后端: 校验参数 @Valid
+    后端->>数据层: 查库存 MenuRepository.findByNameAndStatus
+    后端->>数据层: 扣减库存 Redis DECR stock:xxx
+    后端->>数据层: 保存订单 OrderRepository.save → status=CREATED
+    后端-->>前端: 201 Created → Order JSON
+    前端->>前端: store.clearCart()
+    前端->>前端: uni.navigateTo 订单详情页
+    前端-->>顾客: Toast "下单成功"
+
+    Note over 顾客,数据层: ② 订单状态流转
+
+    后端->>数据层: PUT /api/order/{no}/status?status=PREPARING
+    数据层-->>后端: status 更新为 PREPARING
+    后端-->>前端: Order { status: PREPARING }
+
+    后端->>数据层: PUT ...status?status=PENDING_CONFIRM
+    数据层-->>后端: status 更新为 PENDING_CONFIRM
+    后端-->>前端: Order { status: PENDING_CONFIRM }
+
+    顾客->>前端: 确认取餐 (勾选菜品)
+    前端->>后端: POST /api/order/confirm { orderNo, confirmedItemNames }
+    后端->>数据层: 更新 status=CONFIRMED + confirmDetail
+    后端-->>前端: Order { status: CONFIRMED }
+    前端-->>顾客: Toast "取餐确认成功"
+
+    后端->>数据层: PUT ...status?status=CLOSED 或 VERIFIED
+    数据层-->>后端: 订单完成
+
+    rect rgb(245, 245, 245)
+        Note right of 前端: 订单状态总览
+        Note right of 前端: CREATED → 已提交
+        Note right of 前端: PREPARING → 备餐中
+        Note right of 前端: PENDING_CONFIRM → 待取餐确认
+        Note right of 前端: CONFIRMED → 已确认
+        Note right of 前端: CLOSED → 已完成
+        Note right of 前端: VERIFIED → 已核销
+    end
+</div>
+
+  <div class="legend">
+    <span class="legend-item"><span class="dot dot-actor1"></span> 顾客操作</span>
+    <span class="legend-item"><span class="dot dot-actor2"></span> 前端逻辑</span>
+    <span class="legend-item"><span class="dot dot-actor3"></span> 后端处理</span>
+    <span class="legend-item"><span class="dot dot-db"></span> 数据持久化</span>
+    <span class="legend-item"><span class="dot dot-state"></span> 订单状态变更点</span>
+  </div>
+
+  <hr style="margin:32px 0;border:none;border-top:1px solid #e2e8f0" />
+
+  <h2>📊 状态机</h2>
+  <div class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': {
+  'fontSize': '14px',
+  'primaryColor': '#f87171',
+  'primaryTextColor': '#fff',
+  'primaryBorderColor': '#dc2626',
+  'lineColor': '#64748b',
+  'secondaryColor': '#f1f5f9',
+  'tertiaryColor': '#e2e8f0'
+}}}%%
+stateDiagram-v2
+    [*] --> CREATED : 顾客提交订单
+    CREATED --> PREPARING : 后厨开始备餐
+    PREPARING --> PENDING_CONFIRM : 备餐完成
+    PENDING_CONFIRM --> CONFIRMED : 顾客确认取餐
+    CONFIRMED --> CLOSED : 订单关闭
+    CONFIRMED --> VERIFIED : 商家核销
+
+    note right of CREATED : POST /api/order → 201
+    note right of PENDING_CONFIRM : POST /api/order/confirm
+    note right of CONFIRMED : 可合并订单 mergeOrders
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({ startOnLoad: true, securityLevel: 'loose' });
+</script>
+</body>
+</html>
