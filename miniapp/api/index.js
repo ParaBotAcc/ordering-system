@@ -12,14 +12,17 @@ function request(path, options = {}) {
         ...options.headers
       },
       success: (res) => {
+        console.log('[API]', options.method || 'GET', path, 'status=' + res.statusCode, 'type=' + typeof res.data, 'data=', res.data)
         if (res.statusCode >= 200 && res.statusCode < 300) {
           const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
+          console.log('[API] resolve data:', data)
           resolve(data)
         } else {
           reject({ code: res.statusCode, message: (typeof res.data === 'object' ? res.data?.message : null) || '请求失败' })
         }
       },
       fail: (err) => {
+        console.log('[API] fail:', path, err)
         reject({ code: -1, message: '网络异常，请检查网络连接' })
       }
     })
