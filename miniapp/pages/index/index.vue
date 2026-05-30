@@ -219,6 +219,7 @@ function onSearchTap() {
 function loadMore() {}
 
 async function goCheckout() {
+  console.log('goCheckout called')
   if (!store.tableNo) {
     // 小程序不支持 showModal editable，使用自定义弹窗
     showTableInput.value = true
