@@ -237,12 +237,18 @@ async function goCheckout() {
       })),
       note: ''
     })
+    if (!order || !order.orderNo) {
+      console.error('下单响应异常:', JSON.stringify(order))
+      uni.showToast({ title: '响应异常,请检查后端', icon: 'none' })
+      return
+    }
     store.clearCart()
     showDrawer.value = false
     uni.showToast({ title: '下单成功', icon: 'success' })
     uni.navigateTo({ url: `/pages/order-detail/index?orderNo=${order.orderNo}` })
   } catch (e) {
-    uni.showToast({ title: e.message || '下单失败', icon: 'none' })
+    console.error('下单失败:', e)
+    uni.showToast({ title: (typeof e === 'string' ? e : e?.message) || '下单失败', icon: 'none' })
   }
 }
 
@@ -277,12 +283,18 @@ async function submitOrder() {
       })),
       note: ''
     })
+    if (!order || !order.orderNo) {
+      console.error('下单响应异常:', JSON.stringify(order))
+      uni.showToast({ title: '响应异常,请检查后端', icon: 'none' })
+      return
+    }
     store.clearCart()
     showDrawer.value = false
     uni.showToast({ title: '下单成功', icon: 'success' })
     uni.navigateTo({ url: `/pages/order-detail/index?orderNo=${order.orderNo}` })
   } catch (e) {
-    uni.showToast({ title: e.message || '下单失败', icon: 'none' })
+    console.error('下单失败:', e)
+    uni.showToast({ title: (typeof e === 'string' ? e : e?.message) || '下单失败', icon: 'none' })
   }
 }
 </script>
