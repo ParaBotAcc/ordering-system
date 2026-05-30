@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <view class="header">
-      <text class="back" @tap="uni.navigateBack()">←</text>
+      <text class="back" @tap="goBack">← 返回</text>
       <text class="title">订单详情</text>
       <view style="width:40px"></view>
     </view>
@@ -133,6 +133,10 @@ async function submitConfirm() {
   } catch (e) {
     uni.showToast({ title: e.message || '提交失败', icon: 'none' })
   }
+}
+
+function goBack() {
+  uni.navigateBack()
 }
 
 function formatTime(t) {
