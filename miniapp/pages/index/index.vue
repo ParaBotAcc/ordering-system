@@ -235,19 +235,26 @@ function doCreateOrder(onSuccess) {
     return { name: c.name, spec: c.spec || '', price: c.price, quantity: c.quantity, subtotal: c.subtotal }
   })
   if (items.length === 0) return
-  orderApi.create({ tableNo: store.tableNo, items: items, note: '' }).then(function(order) {
-    if (!order || !order.orderNo) {
-      console.error('下单响应异常:', JSON.stringify(order))
-      uni.showToast({ title: '响应异常,请检查后端', icon: 'none' })
-      return
+  var data = { tableNo: store.tableNo, items: items, note: '' }
+  uni.request({
+    url: 'http://localhost:8080/api/order',
+    method: 'POST',
+    data: data,
+    dataType: 'json',
+    header: { 'Content-Type': 'application/json' },
+    success: function(res) {
+      if (res.statusCode >= 200 && res.statusCode < 300 && res.data && res.data.orderNo) {
+        store.clearCart()
+        if (onSuccess) onSuccess()
+        uni.showToast({ title: '下单成功', icon: 'success' })
+        uni.navigateTo({ url: '/pages/order-detail/index?orderNo=' + res.data.orderNo })
+      } else {
+        uni.showToast({ title: '下单失败', icon: 'none' })
+      }
+    },
+    fail: function() {
+      uni.showToast({ title: '网络异常', icon: 'none' })
     }
-    store.clearCart()
-    if (onSuccess) onSuccess()
-    uni.showToast({ title: '下单成功', icon: 'success' })
-    uni.navigateTo({ url: '/pages/order-detail/index?orderNo=' + order.orderNo })
-  }).catch(function(e) {
-    console.error('下单失败:', e)
-    uni.showToast({ title: (typeof e === 'string' ? e : (e && e.message)) || '下单失败', icon: 'none' })
   })
 }
 
