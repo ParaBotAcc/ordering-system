@@ -105,6 +105,27 @@
       </view>
     </view>
   </view>
+
+  <!-- 桌号输入弹窗 -->
+  <view class="drawer-mask" v-if="showTableInput" @tap="cancelTableInput"></view>
+  <view class="table-input-modal" v-if="showTableInput">
+    <view class="table-input-header">
+      <text class="table-input-title">输入桌号</text>
+    </view>
+    <view class="table-input-body">
+      <input
+        class="table-input-field"
+        v-model="tableInputValue"
+        placeholder="如 A01"
+        focus="true"
+        maxlength="10"
+      />
+    </view>
+    <view class="table-input-footer">
+      <view class="table-input-btn cancel" @tap="cancelTableInput">取消</view>
+      <view class="table-input-btn confirm" @tap="confirmTableInput">确定</view>
+    </view>
+  </view>
 </template>
 
 <script setup>
@@ -116,6 +137,8 @@ const categories = ref([])
 const menuItems = ref([])
 const activeCategory = ref('')
 const showDrawer = ref(false)
+const showTableInput = ref(false)
+const tableInputValue = ref('')
 
 const cart = computed(() => store.cart)
 const cartCount = computed(() => store.cartCount)
@@ -197,15 +220,51 @@ function loadMore() {}
 
 async function goCheckout() {
   if (!store.tableNo) {
-    const { result } = await uni.showModal({
-      title: '输入桌号',
-      content: '请扫描桌上二维码或输入桌号',
-      editable: true
-    })
-    if (!result?.content) return
-    store.setTableNo(result.content)
+    // 小程序不支持 showModal editable，使用自定义弹窗
+    showTableInput.value = true
+    return
   }
 
+  try {
+    const order = await orderApi.create({
+      tableNo: store.tableNo,
+      items: cart.value.map(c => ({
+        name: c.name,
+        spec: c.spec || '',
+        price: c.price,
+        quantity: c.quantity,
+        subtotal: c.subtotal
+      })),
+      note: ''
+    })
+    store.clearCart()
+    showDrawer.value = false
+    uni.showToast({ title: '下单成功', icon: 'success' })
+    uni.navigateTo({ url: `/pages/order-detail/index?orderNo=${order.orderNo}` })
+  } catch (e) {
+    uni.showToast({ title: e.message || '下单失败', icon: 'none' })
+  }
+}
+
+function confirmTableInput() {
+  if (!tableInputValue.value.trim()) {
+    uni.showToast({ title: '请输入桌号', icon: 'none' })
+    return
+  }
+  store.setTableNo(tableInputValue.value.trim())
+  showTableInput.value = false
+  tableInputValue.value = ''
+  // 继续下单
+  submitOrder()
+}
+
+function cancelTableInput() {
+  showTableInput.value = false
+  tableInputValue.value = ''
+}
+
+async function submitOrder() {
+  if (cart.value.length === 0) return
   try {
     const order = await orderApi.create({
       tableNo: store.tableNo,
@@ -540,5 +599,65 @@ async function goCheckout() {
   text-align: center;
   color: #999;
   font-size: 14px;
+}
+
+/* 桌号输入弹窗 */
+.table-input-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 280px;
+  background: #FFF;
+  border-radius: 12px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.table-input-header {
+  padding: 16px 16px 8px;
+  text-align: center;
+}
+
+.table-input-title {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.table-input-body {
+  padding: 12px 16px;
+}
+
+.table-input-field {
+  width: 100%;
+  height: 40px;
+  border: 1px solid #DDD;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 15px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.table-input-footer {
+  display: flex;
+  border-top: 1px solid #F0F0F0;
+}
+
+.table-input-btn {
+  flex: 1;
+  padding: 12px;
+  text-align: center;
+  font-size: 15px;
+}
+
+.table-input-btn.confirm {
+  color: #FF6B35;
+  font-weight: bold;
+  border-left: 1px solid #F0F0F0;
+}
+
+.table-input-btn.cancel {
+  color: #666;
 }
 </style>
