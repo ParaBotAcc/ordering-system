@@ -100,23 +100,32 @@ onUnmounted(function() {
   }
 })
 
-function connectWebSocket(orderNo) {
-  // uni-app WebSocket 连接
-  var protocol = 'ws'
-  var host = 'localhost:8080'
-  // 生产环境：通过小程序后台配置合法域名，或从环境变量读
+// 获取 WebSocket 服务器地址，兼容 H5 和小程序
+function getWsHost() {
   // #ifdef H5
-  host = window.location.host
+  return window.location.host  // H5: 直接用页面域名
   // #endif
-  wsTask = uni.connectSocket({
-    url: protocol + '://' + host + '/ws/order?orderNo=' + orderNo,
-    success: function() { console.log('WS连接成功', orderNo) },
-    fail: function(err) { console.warn('WS连接失败', JSON.stringify(err)) }
+  // #ifdef MP-WEIXIN
+  return 'localhost:8080'       // 小程序: 真机需改为局域网IP
+  // #endif
+  return 'localhost:8080'
+}
+
+function connectWebSocket(orderNo) {
+  var url = 'ws://' + getWsHost() + '/ws/order?orderNo=' + orderNo
+
+  // uni-app 推荐使用 SocketTask API（兼容 H5 / 小程序）
+  wsTask = uni.connectSocket({ url: url })
+
+  wsTask.onOpen(function() {
+    console.log('WS通道已建立:', orderNo)
   })
-  uni.onSocketOpen(function() {
-    console.log('WS通道已建立')
+
+  wsTask.onError(function(err) {
+    console.warn('WS错误:', JSON.stringify(err))
   })
-  uni.onSocketMessage(function(res) {
+
+  wsTask.onMessage(function(res) {
     try {
       var data = JSON.parse(res.data)
       if (data.orderNo === orderNo && data.status && order.value) {
@@ -124,14 +133,12 @@ function connectWebSocket(orderNo) {
         uni.showToast({ title: '订单状态已更新', icon: 'none' })
       }
     } catch(e) {
-      console.warn('WS消息解析失败', res.data)
+      console.warn('WS消息解析失败:', res.data)
     }
   })
-  uni.onSocketError(function(err) {
-    console.warn('WS错误', JSON.stringify(err))
-  })
-  uni.onSocketClose(function() {
-    console.log('WS已关闭')
+
+  wsTask.onClose(function() {
+    console.log('WS已关闭:', orderNo)
   })
 }
 
