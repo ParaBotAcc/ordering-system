@@ -64,7 +64,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { orderApi } from '../../api/index.js'
 
 const order = ref(null)
@@ -76,22 +77,15 @@ const parsedItems = computed(() => {
   catch { return [] }
 })
 
-onMounted(function() {
-  var pages = getCurrentPages()
-  if (pages.length <= 0) return
-  var page = pages[pages.length - 1]
-  var opts = page.$page && page.$page.options
-  if (opts && opts.orderNo) loadOrder(opts.orderNo)
+onLoad(function(options) {
+  if (options && options.orderNo) {
+    orderApi.get(options.orderNo).then(function(data) {
+      order.value = data
+    }).catch(function() {
+      uni.showToast({ title: '加载订单失败', icon: 'none' })
+    })
+  }
 })
-
-function loadOrder(orderNo) {
-  if (!orderNo) return
-  orderApi.get(orderNo).then(function(data) {
-    order.value = data
-  }).catch(function() {
-    uni.showToast({ title: '加载订单失败', icon: 'none' })
-  })
-}
 
 function statusIcon() {
   const map = {
