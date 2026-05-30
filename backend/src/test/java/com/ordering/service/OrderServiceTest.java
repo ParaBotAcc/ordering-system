@@ -5,8 +5,10 @@ import com.ordering.dto.OrderConfirmRequest;
 import com.ordering.dto.OrderRequest;
 import com.ordering.entity.Menu;
 import com.ordering.entity.Order;
+import com.ordering.feishu.FeishuBitableClient;
 import com.ordering.repository.MenuRepository;
 import com.ordering.repository.OrderRepository;
+import com.ordering.websocket.OrderWebSocketHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -35,6 +37,8 @@ class OrderServiceTest {
     @Mock private OrderRepository orderRepository;
     @Mock private StringRedisTemplate redisTemplate;
     @Mock private ValueOperations<String, String> valueOps;
+    @Mock private FeishuBitableClient feishuClient;
+    @Mock private OrderWebSocketHandler webSocketHandler;
 
     private OrderService service;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -43,7 +47,7 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new OrderService(menuRepository, orderRepository, objectMapper);
+        service = new OrderService(menuRepository, orderRepository, objectMapper, feishuClient, webSocketHandler);
         service.setRedisTemplate(redisTemplate);
     }
 

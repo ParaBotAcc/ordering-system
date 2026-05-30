@@ -13,10 +13,10 @@ feishu:
   app-id: cli_aa9c0e8b7dbe1cbc
   app-secret: cqBOSTbIM87RndRLqU1sseh8n4ZD0qqT  # TODO 替换为真实 app-secret
   bitable:
-    table-app-token: BDSBbWQFma4i2TsWFpDcUA8tnBh
-    menu-table-id: tblWL4oVA5lnkWjH
-    order-table-id: tblxo10F957kfmeU
-    table-table-id: tbl0neFXmewZYPXr
+    table-app-token: XdKKb9WioaMnGmsBrxmc8bWWnUc
+    menu-table-id: tbl7LL4zwOxHd45D
+    order-table-id: tble2s64dRkibucL
+    table-table-id: tblOyvPrOJ3wwvtn
 
 springdoc:
   api-docs:
