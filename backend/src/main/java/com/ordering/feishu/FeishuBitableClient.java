@@ -2,8 +2,8 @@ package com.ordering.feishu;
 
 import com.ordering.config.FeishuConfig;
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -17,13 +17,17 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * 使用飞书 Open API v2 (REST), 无需额外 SDK
  */
-@Slf4j
 @Component
-@RequiredArgsConstructor
 public class FeishuBitableClient {
+
+    private static final Logger log = LoggerFactory.getLogger(FeishuBitableClient.class);
 
     private final FeishuConfig feishuConfig;
     private final RestTemplate restTemplate = new RestTemplate();
+
+    public FeishuBitableClient(FeishuConfig feishuConfig) {
+        this.feishuConfig = feishuConfig;
+    }
 
     private static final String BASE_URL = "https://open.feishu.cn/open-apis";
 

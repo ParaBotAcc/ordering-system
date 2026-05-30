@@ -11,7 +11,7 @@ server:
 # 飞书配置（Demo 阶段暂不启用）
 feishu:
   app-id: cli_aa9c0e8b7dbe1cbc
-  app-secret: placeholder  # TODO: 替换为真实 app-secret
+  app-secret: cqBOSTbIM87RndRLqU1sseh8n4ZD0qqT  # TODO 替换为真实 app-secret
   bitable:
     table-app-token: BDSBbWQFma4i2TsWFpDcUA8tnBh
     menu-table-id: tblWL4oVA5lnkWjH
