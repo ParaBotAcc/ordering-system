@@ -27,6 +27,18 @@ services:
     volumes:
       - redis-data:/data
 
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      UPLOAD_LIMIT: 100M
+    ports:
+      - "8081:80"
+    depends_on:
+      - mysql
+
 volumes:
   mysql-data:
   redis-data:
