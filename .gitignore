@@ -26,3 +26,4 @@ docker-daemon-proxy.json
 # Temp
 /tmp/
 **/tmp/
+**/unpackage/

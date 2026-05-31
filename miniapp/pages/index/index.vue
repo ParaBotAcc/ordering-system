@@ -61,7 +61,7 @@
     </view>
 
     <!-- 购物车底栏 -->
-    <view class="cart-bar" @tap="toggleDrawer" v-if="cartCount > 0">
+    <view class="cart-bar" v-if="cartCount > 0">
       <view class="cart-icon-wrapper">
         <view class="cart-icon">{{ cartCount }}</view>
       </view>
@@ -69,7 +69,7 @@
         <text class="cart-total">¥{{ (cartTotal / 100).toFixed(2) }}</text>
         <text class="cart-hint">另需配送费¥0</text>
       </view>
-      <view class="cart-checkout" @tap.stop="goCheckout">去结算</view>
+      <!-- <view class="cart-checkout" @tap.stop="goCheckout">去结算</view> -->
     </view>
 
     <view class="cart-bar cart-bar-empty" v-else>
@@ -83,7 +83,7 @@
     <view class="drawer-mask" v-if="showDrawer" @tap="toggleDrawer"></view>
     <view class="cart-drawer" :class="{ open: showDrawer }">
       <view class="drawer-header">
-        <text class="drawer-title">购物车</text>
+        <text class="drawer-title" @tap="toggleDrawer">购物车</text>
         <text class="drawer-clear" @tap="clearCart">清空</text>
       </view>
       <scroll-view class="drawer-items" scroll-y>
@@ -197,6 +197,7 @@ function getCategoryCartCount(catName) {
 }
 
 function toggleDrawer() {
+  console.log("toggleDrawer")
   if (cartCount.value > 0) showDrawer.value = !showDrawer.value
 }
 
