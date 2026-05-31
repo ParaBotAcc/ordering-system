@@ -9,12 +9,19 @@
 │  微信小程序   │ ←WS→ │  Java 后端    │ ←→  │  MySQL    │
 │  (uni-app)   │     │  Spring Boot │     │  + Redis  │
 └─────────────┘     └──────┬───────┘     └──────────┘
-                           │ REST / WebSocket
+                           │ REST
                            ↓
                     ┌──────────────┐
-                    │  飞书 Bitable  │  ← 双向同步(30s定时+手动)
-                    │  (管理后台)    │
+                    │  飞书 Bitable  │
+                    │  (影子数据)    │
                     └──────────────┘
+
+## 管理后台
+
+独立项目：**[ordering-admin](https://github.com/ParaBotAcc/ordering-admin)**
+
+基于 ELADMIN JPA 版，独立的 Spring Boot 应用（端口 8000），共享 MySQL 数据库。
+具备完整的用户/角色/权限管理、代码生成器、系统监控等功能。
 ```
 
 ## 技术栈
@@ -23,6 +30,7 @@
 |------|------|
 | 后端 | Java 17, Spring Boot 3.2, Spring Data JPA, Hibernate |
 | 数据库 | MySQL 8.0 (prod, via phpMyAdmin :8081) / H2 (demo) |
+| 管理后台 | ELADMIN (独立项目, 端口 8000, 共享数据库) |
 | 缓存 | Redis 7 (prod) / 本地内存 (demo) |
 | WebSocket | Spring WebSocket (原生, 非 STOMP) |
 | 前端 | uni-app (Vue 3), 微信小程序 |
@@ -112,6 +120,7 @@ ordering-system/
 │   │   └── search/index.vue          # 菜品搜索
 │   └── store/index.js                # 全局状态（桌号、购物车）
 ├── docker-compose.yml                # MySQL + Redis + phpMyAdmin
+├── (独立项目) ordering-admin          # ELADMIN 管理后台, 端口 8000
 ├── docs/                             # 设计文档
 └── start-demo.sh                     # Demo 启动脚本
 ```
@@ -187,14 +196,19 @@ ordering-system/
 
 ## TODO
 
+### 管理后台（ordering-admin）
+- [ ] 订单管理页面（列表/搜索/状态筛选/改状态）
+- [ ] 菜品管理页面（CRUD + 上下架）
+- [ ] 订单 items JSON 可视化（折叠卡片展示）
+- [ ] 数据看板（今日单量/收入/畅销菜品）
+- [ ] 合并订单操作页面
+
+### 点餐 API（ordering-system）
 - [ ] 飞书群消息推送（新订单通知卡片）
-- [ ] 消息卡片按钮交互（确认/核销操作）
-- [ ] Bitable 菜品表 → 后端菜单刷新
-- [ ] Bitable 仪表盘 + 筛选视图
-- [ ] 飞书机器人管理指令（查单/改状态/同步）
+- [ ] 飞书机器人管理指令
 - [ ] 订单超时未取餐提醒
 - [ ] 合单逻辑前端对接
-- [ ] 库存管理（Redis 扣减 → 飞书同步）
+- [ ] 库存管理
 - [ ] 生产环境部署脚本
 - [ ] 微信小程序真机调试配置
 
