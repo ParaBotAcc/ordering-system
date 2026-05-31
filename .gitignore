@@ -27,3 +27,4 @@ docker-daemon-proxy.json
 /tmp/
 **/tmp/
 **/unpackage/
+*.mv.db
